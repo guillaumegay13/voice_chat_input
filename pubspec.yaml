@@ -1,0 +1,20 @@
+name: voice_chat_input
+description: A polished voice-first chat input composer for Flutter — hold-to-record, live waveform, slide-to-cancel, animated mic↔send. Drop-in for any chat shell.
+version: 0.1.0
+repository: https://github.com/guillaumegay13/voice_chat_input
+issue_tracker: https://github.com/guillaumegay13/voice_chat_input/issues
+
+environment:
+  sdk: ^3.4.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
