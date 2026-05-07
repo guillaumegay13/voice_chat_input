@@ -3,11 +3,9 @@
 A polished, voice-first chat input composer for Flutter — hold-to-record with
 live waveform, slide-to-cancel, animated mic↔send. Drop-in for any chat shell.
 
-```
-[📎]  [  Hold the mic to record…              ]  [🎤]
-                          ↓ press & hold
-[🔴 00:12  ▁▂▅█▇▄▂▁  ◀ Slide to cancel        ]  [🎤]
-```
+<p align="center">
+  <img src="doc/demo.gif" alt="voice_chat_input demo" width="320" />
+</p>
 
 ## Why
 
