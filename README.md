@@ -34,7 +34,7 @@ at the bottom of the screen). Pair it with any chat list.
 
 ```yaml
 dependencies:
-  voice_chat_input: ^0.1.0
+  voice_chat_input: ^0.2.0
 ```
 
 ## Usage
@@ -92,8 +92,13 @@ See [`example/`](./example) for a runnable demo.
 | `slideToCancelLabel` | Label shown next to the back-arrow during recording. |
 | `isBusy` | Disable all actions while a previous request is in flight. |
 | `isTranscribing` | Show a spinner in place of the action button. |
+| `textInputEnabled` | `false` disables only the text field; attach and action buttons keep working. Default `true`. |
 | `bottomPadding` | Extra padding below the row (use for the iOS home indicator). |
 | `sendIcon` / `micIcon` / `attachIcon` | Override the default glyphs with any `Widget`. |
+
+The action button's states carry stable keys for widget tests:
+`VoiceChatInputKeys.send`, `VoiceChatInputKeys.mic` and
+`VoiceChatInputKeys.transcribing`.
 
 ### `VoiceConfig`
 

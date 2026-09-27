@@ -8,6 +8,13 @@ import 'recording_waveform_painter.dart';
 import 'voice_chat_input_theme.dart';
 import 'voice_config.dart';
 
+/// Keys of the action button's three states, for tests and integrations.
+abstract final class VoiceChatInputKeys {
+  static const send = ValueKey<String>('send_action');
+  static const mic = ValueKey<String>('voice_action');
+  static const transcribing = ValueKey<String>('transcribing_action');
+}
+
 /// A polished chat input composer with hold-to-record voice support.
 ///
 /// Layout (left → right):
@@ -58,6 +65,10 @@ class VoiceChatInput extends StatefulWidget {
   /// app is transcribing the recording before sending.
   final bool isTranscribing;
 
+  /// When false, the text field is disabled while the attach and action
+  /// buttons keep working (e.g. while the user must answer a prompt first).
+  final bool textInputEnabled;
+
   /// Extra padding applied below the row. Pass
   /// `MediaQuery.of(context).padding.bottom` to respect the iOS home indicator.
   final double bottomPadding;
@@ -84,6 +95,7 @@ class VoiceChatInput extends StatefulWidget {
     this.slideToCancelLabel = 'Slide to cancel',
     this.isBusy = false,
     this.isTranscribing = false,
+    this.textInputEnabled = true,
     this.bottomPadding = 0,
     this.sendIcon,
     this.micIcon,
@@ -213,7 +225,9 @@ class _VoiceChatInputState extends State<VoiceChatInput>
 
     _recordingTimer?.cancel();
     _waveformTimer?.cancel();
-    await _amplitudeSub?.cancel();
+    // Don't wait for the amplitude stream to finish cancelling: the host's
+    // onStop (e.g. starting transcription) must not depend on it.
+    unawaited(_amplitudeSub?.cancel());
     _amplitudeSub = null;
 
     setState(() {
@@ -336,6 +350,7 @@ class _VoiceChatInputState extends State<VoiceChatInput>
             child: TextFormField(
               controller: widget.controller,
               focusNode: _focusNode,
+              enabled: widget.textInputEnabled,
               style: TextStyle(
                 color: theme.textPrimary,
                 fontSize: 15,
@@ -387,10 +402,12 @@ class _VoiceChatInputState extends State<VoiceChatInput>
           Widget child;
           if (widget.isTranscribing) {
             child = _buildTranscribingButton(theme);
-          } else if (canSend || !hasVoice) {
-            child = _buildSendButton(theme);
-          } else {
+          } else if (_isRecording || (hasVoice && !canSend)) {
+            // Stay on the mic while recording, even if the field already has
+            // text: swapping to send would end the long-press gesture.
             child = _buildMicButton(theme);
+          } else {
+            child = _buildSendButton(theme);
           }
 
           return AnimatedSwitcher(
@@ -413,7 +430,7 @@ class _VoiceChatInputState extends State<VoiceChatInput>
 
   Widget _buildTranscribingButton(VoiceChatInputTheme theme) {
     return Container(
-      key: const ValueKey('vci_transcribing'),
+      key: VoiceChatInputKeys.transcribing,
       width: _actionButtonSize,
       height: _actionButtonSize,
       decoration: BoxDecoration(
@@ -433,7 +450,7 @@ class _VoiceChatInputState extends State<VoiceChatInput>
 
   Widget _buildSendButton(VoiceChatInputTheme theme) {
     return GestureDetector(
-      key: const ValueKey('vci_send'),
+      key: VoiceChatInputKeys.send,
       onTap: _handleSubmitTap,
       child: Container(
         width: _actionButtonSize,
@@ -454,10 +471,10 @@ class _VoiceChatInputState extends State<VoiceChatInput>
 
   Widget _buildMicButton(VoiceChatInputTheme theme) {
     return GestureDetector(
-      key: const ValueKey('vci_mic'),
+      key: VoiceChatInputKeys.mic,
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) {
-        if (_isActionBusy || widget.isTranscribing) return;
+        if (_isActionBusy || widget.isTranscribing || _isRecording) return;
         _scaleController.forward();
         HapticFeedback.selectionClick();
       },
@@ -486,14 +503,18 @@ class _VoiceChatInputState extends State<VoiceChatInput>
         animation: _scaleAnimation,
         builder: (context, _) {
           return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: SizedBox(
+            scale: _isRecording ? 1.0 : _scaleAnimation.value,
+            child: Container(
               width: _actionButtonSize,
               height: _actionButtonSize,
+              // Idle: bare icon. Recording: brand-filled circle.
+              decoration: _isRecording
+                  ? BoxDecoration(color: theme.brand, shape: BoxShape.circle)
+                  : null,
               child: Center(
                 child: IconTheme(
                   data: IconThemeData(
-                    color: theme.textSecondary,
+                    color: _isRecording ? theme.onBrand : theme.textSecondary,
                     size: 28,
                   ),
                   child: widget.micIcon ?? const Icon(Icons.mic_none_rounded),
