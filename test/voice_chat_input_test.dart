@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_chat_input/voice_chat_input.dart';
@@ -43,8 +44,8 @@ void main() {
       await tester.pump();
 
       expect(find.text('Say something'), findsOneWidget);
-      expect(find.byKey(const ValueKey('vci_mic')), findsOneWidget);
-      expect(find.byKey(const ValueKey('vci_send')), findsNothing);
+      expect(find.byKey(VoiceChatInputKeys.mic), findsOneWidget);
+      expect(find.byKey(VoiceChatInputKeys.send), findsNothing);
     });
 
     testWidgets('swaps to send when text is entered', (tester) async {
@@ -60,11 +61,11 @@ void main() {
       await tester.pump();
 
       // No voice config => send button is the default.
-      expect(find.byKey(const ValueKey('vci_send')), findsOneWidget);
+      expect(find.byKey(VoiceChatInputKeys.send), findsOneWidget);
 
       controller.text = 'hello';
       await tester.pump();
-      expect(find.byKey(const ValueKey('vci_send')), findsOneWidget);
+      expect(find.byKey(VoiceChatInputKeys.send), findsOneWidget);
     });
 
     testWidgets('tap on send invokes onSubmit', (tester) async {
@@ -80,7 +81,7 @@ void main() {
       ));
       await tester.pump();
 
-      await tester.tap(find.byKey(const ValueKey('vci_send')));
+      await tester.tap(find.byKey(VoiceChatInputKeys.send));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -101,7 +102,7 @@ void main() {
       ));
       await tester.pump();
 
-      await tester.tap(find.byKey(const ValueKey('vci_send')));
+      await tester.tap(find.byKey(VoiceChatInputKeys.send));
       await tester.pump();
       expect(submitted, 0);
     });
@@ -136,6 +137,72 @@ void main() {
 
       expect(find.byIcon(Icons.attach_file_rounded), findsOneWidget);
       expect(find.text('2'), findsOneWidget);
+    });
+  });
+
+  group('VoiceChatInput 0.2.0', () {
+    testWidgets('textInputEnabled false disables only the text field',
+        (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      var attachTaps = 0;
+
+      await tester.pumpWidget(_wrap(
+        VoiceChatInput(
+          controller: controller,
+          textInputEnabled: false,
+          onSubmit: () async {},
+          attachment: AttachmentConfig(onTap: () => attachTaps++),
+        ),
+      ));
+
+      final field = tester.widget<TextFormField>(find.byType(TextFormField));
+      expect(field.enabled, isFalse);
+
+      await tester.tap(find.byIcon(Icons.attach_file_rounded));
+      expect(attachTaps, 1);
+    });
+
+    testWidgets('keeps the mic while recording even if text appears',
+        (tester) async {
+      final controller = TextEditingController();
+      final amp = StreamController<double>.broadcast();
+      addTearDown(() {
+        controller.dispose();
+        amp.close();
+      });
+      var starts = 0;
+      var stops = 0;
+
+      await tester.pumpWidget(_wrap(
+        VoiceChatInput(
+          controller: controller,
+          onSubmit: () async {},
+          voice: VoiceConfig(
+            amplitudeStream: amp.stream,
+            onStart: () => starts++,
+            onStop: () async => stops++,
+            onCancel: () {},
+          ),
+        ),
+      ));
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(VoiceChatInputKeys.mic)),
+      );
+      await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+      expect(starts, 1);
+
+      // Text set by the host mid-recording must not swap the button to send.
+      controller.text = 'hello';
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(VoiceChatInputKeys.mic), findsOneWidget);
+      expect(find.byKey(VoiceChatInputKeys.send), findsNothing);
+
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(stops, 1);
+      expect(find.byKey(VoiceChatInputKeys.send), findsOneWidget);
     });
   });
 
