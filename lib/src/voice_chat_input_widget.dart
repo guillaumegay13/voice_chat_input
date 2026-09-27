@@ -8,6 +8,13 @@ import 'recording_waveform_painter.dart';
 import 'voice_chat_input_theme.dart';
 import 'voice_config.dart';
 
+/// Keys of the action button's three states, for tests and integrations.
+abstract final class VoiceChatInputKeys {
+  static const send = ValueKey<String>('send_action');
+  static const mic = ValueKey<String>('voice_action');
+  static const transcribing = ValueKey<String>('transcribing_action');
+}
+
 /// A polished chat input composer with hold-to-record voice support.
 ///
 /// Layout (left → right):
@@ -23,13 +30,6 @@ import 'voice_config.dart';
 ///
 /// All audio I/O is delegated to your app via [VoiceConfig]. Pass `null` to
 /// [voice] to ship a text-only composer.
-/// Keys of the action button's three states, for tests and integrations.
-abstract final class VoiceChatInputKeys {
-  static const send = ValueKey<String>('send_action');
-  static const mic = ValueKey<String>('voice_action');
-  static const transcribing = ValueKey<String>('transcribing_action');
-}
-
 class VoiceChatInput extends StatefulWidget {
   /// The text controller for the input.
   final TextEditingController controller;
